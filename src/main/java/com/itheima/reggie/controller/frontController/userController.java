@@ -10,11 +10,13 @@ import com.itheima.reggie.service.categoryService;
 import com.itheima.reggie.service.userService;
 import com.itheima.reggie.utils.ValidateCodeUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @neirong:
@@ -26,7 +28,8 @@ import java.util.Random;
 public class userController {
     @Autowired
     private userService userservice;
-
+    @Autowired
+    private StringRedisTemplate redisTemplate;
     @Autowired
     private HttpServletRequest request;
     @PostMapping("/sendMsg")
@@ -39,8 +42,10 @@ public class userController {
         //模拟发送短息
         System.out.println("发送验证码"+code);
         //验证码储存一份
-        HttpSession session = request.getSession();
-        session.setAttribute(loginDto.getPhone(),code);
+        redisTemplate.opsForValue().set(loginDto.getPhone(),code+"");
+        redisTemplate.opsForValue().set(loginDto.getPhone(),code+"",300, TimeUnit.SECONDS);
+        /*HttpSession session = request.getSession();
+        session.setAttribute(loginDto.getPhone(),code);*/
         return R.success("短信发送成功");
     }
 
@@ -54,7 +59,8 @@ public class userController {
         String code = loginDto.getCode();
         //2). 从Session中获取到手机号对应的正确的验证码
         HttpSession session = request.getSession();
-        String code1 = (String) session.getAttribute(loginDto.getPhone());
+        //String code1 = (String) session.getAttribute(loginDto.getPhone());
+        String code1 = redisTemplate.opsForValue().get(phone);
         //3). 进行验证码的比对 , 如果比对失败, 直接返回错误信息
         //健壮性判断
         if (code==null){
